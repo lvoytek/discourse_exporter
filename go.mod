@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-    github.com/lvoytek/discourse_client_go v0.1.0
+    github.com/lvoytek/discourse_client_go v0.1.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.5.0
 	github.com/prometheus/common v0.48.0

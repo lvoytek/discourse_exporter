@@ -14,10 +14,6 @@ var (
 	topicsCache = map[string]map[int]*discourse.TopicData{}
 )
 
-var (
-	timeLayout = time.RFC3339
-)
-
 func IntervalCollect(discourseClient *discourse.Client, categoryList []string, interval time.Duration) {
 	for {
 		collectData(discourseClient, categoryList)
@@ -50,28 +46,14 @@ func collectTopicsFromCategory(discourseClient *discourse.Client, categorySlug s
 	for _, topicOverview := range categoryData.TopicList.Topics {
 		cachedTopic, topicExists := topics[topicOverview.ID]
 
-		// If cached topic data exists, check if it actually needs to be updated
 		if topicExists {
-			cachedUpdateTime, err := time.Parse(timeLayout, cachedTopic.LastPostedAt)
+			fmt.Println(topicOverview.LastPostedAt.Compare(cachedTopic.LastPostedAt), topicOverview.LastPostedAt, cachedTopic.LastPostedAt)
+		}
 
-			if err != nil {
-				log.Println("Cached topic time parse error", err)
-				continue
-			}
-
-			newTopicUpdateTime, err := time.Parse(timeLayout, topicOverview.LastPostedAt)
-
-			if err != nil {
-				log.Println("Downloaded topic time parse error", err)
-				continue
-			}
-
-			fmt.Println(newTopicUpdateTime, cachedUpdateTime)
-
-			if newTopicUpdateTime.Compare(cachedUpdateTime) > 0 {
-				fmt.Println("Cached", cachedTopic.Title)
-				continue
-			}
+		// If cached topic data exists, check if it actually needs to be updated
+		if topicExists && cachedTopic.LastPostedAt.Compare(topicOverview.LastPostedAt) >= 0 {
+			fmt.Println("Cached", cachedTopic.Title)
+			continue
 		}
 
 		// Get a new copy of the topic
