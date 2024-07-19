@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/lvoytek/discourse_client_go/pkg/discourse"
@@ -17,18 +17,27 @@ var (
 func IntervalCollect(discourseClient *discourse.Client, categoryList []string, interval time.Duration) {
 	for {
 		collectData(discourseClient, categoryList)
+		updateMetrics()
 		time.Sleep(interval)
 	}
 }
 
 func collectData(discourseClient *discourse.Client, categoryList []string) {
+	var collectorWg sync.WaitGroup
+
 	for _, categorySlug := range categoryList {
-		go collectTopicsFromCategory(discourseClient, categorySlug)
+		collectorWg.Add(1)
+		go collectTopicsFromCategory(&collectorWg, discourseClient, categorySlug)
 	}
 
+	collectorWg.Wait()
 }
 
-func collectTopicsFromCategory(discourseClient *discourse.Client, categorySlug string) {
+func updateMetrics() {
+}
+
+func collectTopicsFromCategory(wg *sync.WaitGroup, discourseClient *discourse.Client, categorySlug string) {
+	defer wg.Done()
 	topics, ok := topicsCache[categorySlug]
 
 	if !ok {
@@ -46,13 +55,8 @@ func collectTopicsFromCategory(discourseClient *discourse.Client, categorySlug s
 	for _, topicOverview := range categoryData.TopicList.Topics {
 		cachedTopic, topicExists := topics[topicOverview.ID]
 
-		if topicExists {
-			fmt.Println(topicOverview.LastPostedAt.Compare(cachedTopic.LastPostedAt), topicOverview.LastPostedAt, cachedTopic.LastPostedAt)
-		}
-
 		// If cached topic data exists, check if it actually needs to be updated
 		if topicExists && cachedTopic.LastPostedAt.Compare(topicOverview.LastPostedAt) >= 0 {
-			fmt.Println("Cached", cachedTopic.Title)
 			continue
 		}
 
@@ -64,11 +68,7 @@ func collectTopicsFromCategory(discourseClient *discourse.Client, categorySlug s
 		} else {
 			log.Println("Download topic error:", err)
 		}
-
-		fmt.Println(categorySlug, topicOverview.Title)
 	}
-
-	fmt.Println(topics)
 
 	if len(topics) > 0 {
 		topicsCache[categorySlug] = topics
